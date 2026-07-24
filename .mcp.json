@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "cw-omni-agents-extension": {
+      "command": "/opt/homebrew/opt/node@24/bin/node",
+      "args": [
+        "/Users/ravizraj/.kiro/extensions/amazon-internal.omni-studios-1.0.4552/out/mcp-server/mcp-proxy.js",
+        "--workspace",
+        "/Users/ravizraj/Documents/workspaces/agent-core/demo/sample-ac-harness-observability"
+      ]
+    },
+    "cw-omni-agents": {
+      "command": "/opt/homebrew/opt/node@24/bin/node",
+      "args": [
+        "/Users/ravizraj/.kiro/extensions/amazon-internal.omni-studios-1.0.4552/out/triton-mcp/server.js"
+      ]
+    }
+  }
+}
