@@ -1,0 +1,10 @@
+{
+    "pylint.args": [
+        "--init-hook=import sys; sys.path.extend(['${workspaceFolder}/cdk', '${workspaceFolder}/app', '${workspaceFolder}/app/lambda/invoke_harness'])"
+    ],
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/cdk",
+        "${workspaceFolder}/app",
+        "${workspaceFolder}/app/lambda/invoke_harness",
+    ]
+}

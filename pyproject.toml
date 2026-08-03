@@ -1,0 +1,16 @@
+[project]
+name = "sample-ac-harness-observability"
+version = "0.1.0"
+description = "Project to demonstrate 1P and 3P observability configuration"
+readme = "README.md"
+requires-python = ">=3.13"
+license = "MIT-0"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "aws-cdk-lib>=2.262.1",
+    "boto3>=1.43.56",
+    "aws-lambda-powertools>=3.31.1",
+    "aws-opentelemetry-distro>=0.19.0",
+]
