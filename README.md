@@ -207,6 +207,10 @@ uv run --env-file .env cdk deploy --yes
 
 Navigate to the `invoke_harness` Lambda function in the AWS Console and use the **Test** button to trigger an invocation. Traces appear in CloudWatch X-Ray within a few seconds.
 
+## Security
+
+See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
+
 ## License
 
 This project is licensed under the MIT-0 License. See the [LICENSE](LICENSE) file for details.
