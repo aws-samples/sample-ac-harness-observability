@@ -11,7 +11,7 @@ End-to-end example showing how to propagate OpenTelemetry (OTel) trace context a
 |                     |        |                               |        |                           |
 |  +--------------+   |  OTel  |  +-------------------------+  |  OTLP  |  +---------------------+  |
 |  | ADOT Layer   |---+------->|  | Strands Agent           |--+------->|  | CloudWatch / X-Ray  |  |
-|  | (auto-instr) |   |  hdrs  |  | (Claude Sonnet 4.6)     |  | spans  |  +---------------------+  |
+|  | (auto-instr) |   |  hdrs  |  | (Claude Sonnet 4)       |  | spans  |  +---------------------+  |
 |  +--------------+   |        |  +-------------------------+  |        |                           |
 |        |            |        |        |                      |        |  +---------------------+  |
 |  +--------------+   |        |  +-----------+                |        |  | 3P OTel Collector   |  |
@@ -99,11 +99,15 @@ OTel instrumentation does not copy baggage to span attributes by default (securi
 
 ### ADOT Lambda layer for auto-instrumentation
 
-Use the AWS Distro for OpenTelemetry (ADOT) Lambda layer with the `INSTRUMENT_HANDLER` exec wrapper. It configures the `TracerProvider`, X-Ray ID generator, propagators, and OTLP exporter automatically. Custom spans created via `trace.get_tracer()` at invocation time integrate seamlessly.
+Use the AWS Lambda Layer for OpenTelemetry (`AWSOpenTelemetryDistroPython`). It configures the `TracerProvider`, X-Ray ID generator, propagators, and OTLP exporter automatically. Custom spans created via `trace.get_tracer()` at invocation time integrate seamlessly. Refer [ADOT Lambda Layer ARNs](https://aws-otel.github.io/docs/getting-started/lambda#adot-lambda-layer-arns) for list of region specific managed Lambda layer ARNs. See documentation for more information on enabling [AWS Distro for OpenTelemetry for Lambda](https://aws-otel.github.io/docs/getting-started/lambda).
 
-In addition to the ADOT Lambda layer, bundle the latest ADOT [≥v0.18.0] alongside the Lambda handler and set the following environment variables to activate the latest OTel instrumentation improvements:
+In addition set the following environment variables to activate the latest OTel instrumentation improvements and capture traces:
 
 ```
+AWS_LAMBDA_EXEC_WRAPPER=/opt/otel-instrument
+OTEL_AWS_APPLICATION_SIGNALS_ENABLED=false
+OTEL_TRACES_SAMPLER=always_on
+
 AGENT_OBSERVABILITY_ENABLED=true
 AWS_GENAI_CONTENT_EXTRACTION_OPT_OUT=true
 OTEL_AWS_APPLICATION_SIGNALS_ENABLED=false
@@ -135,7 +139,7 @@ OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental,gen_ai_span_attributes_
 ```
 
 - `AWS_GENAI_CONTENT_EXTRACTION_OPT_OUT` prevents prompt/response content from being captured in spans and moved to logs (privacy/cost concern). Requires ADOT [≥v0.17.1].
-- `OTEL_SEMCONV_STABILITY_OPT_IN` enables the latest GenAI semantic convention attributes so your traces align with the emerging OTel standard as it matures. Strands [≥v1.48.0] will use latest Gen AI semantic convention and use attributes instead of now deprecated events to capture LLM input, output, prompts, and tool call.
+- `OTEL_SEMCONV_STABILITY_OPT_IN` enables the latest GenAI semantic convention attributes so your traces align with the emerging OTel standard as it matures. The Strands agent sdk [≥v1.48.0] uses the latest GenAI semantic conventions and records LLM input, output, prompts, and tool calls as span attributes instead of the now-deprecated span events.
 
 ### Sending Harness telemetry to a third-party collector
 
@@ -158,13 +162,13 @@ OTEL_EXPORTER_OTLP_HEADERS=Authorization=Bearer <your-api-key>,X-Custom-Header=v
 .
 ├── app/lambda/invoke_harness/    # Lambda function code
 │   ├── handler.py                # Entry point: baggage setup, agent invocation
-│   ├── custom_span.py            # OTel span decorator + header injection
-│   └── requirements.txt          # Python dependencies
+│   └── custom_span.py            # OTel span decorator + header injection
 ├── cdk/                          # CDK infrastructure
+│   ├── .env                      # Environment configuration (from .env.cdk.sample)
 │   ├── app.py                    # CDK app entry point
 │   ├── modules/
 │   │   ├── harness.py            # AgentCore Harness construct
-│   │   └── lambda_client.py      # Lambda + ADOT layer construct
+│   │   └── lambda_fn.py          # Lambda + ADOT layer construct
 │   └── stacks/
 │       └── ac_harness_demo_stack.py
 └── README.md
@@ -177,7 +181,6 @@ OTEL_EXPORTER_OTLP_HEADERS=Authorization=Bearer <your-api-key>,X-Custom-Header=v
 - Python 3.13+ and [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - Node.js 24.x or later (for CDK CLI)
 - AWS credentials configured (`aws configure` or environment variables)
-- Docker (required for Lambda dependency bundling)
 
 ### Setup
 
@@ -200,12 +203,21 @@ cp cdk/.env.cdk.sample cdk/.env
 
 ```bash
 cd cdk
-uv run --env-file .env cdk deploy --yes
+uv run --env-file .env cdk deploy
 ```
 
 4. Invoke the agent:
 
 Navigate to the `invoke_harness` Lambda function in the AWS Console and use the **Test** button to trigger an invocation. Traces appear in CloudWatch X-Ray within a few seconds.
+
+5. Clean-up:
+
+When finished clean-up resources by destroying the stack to avoid any additional cost.
+
+```bash
+cd cdk
+uv run --env-file .env cdk destroy
+```
 
 ## Security
 

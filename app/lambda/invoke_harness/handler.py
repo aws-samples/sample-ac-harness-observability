@@ -53,7 +53,8 @@ def call_agent(session_id, query) -> str:
             delta = event["contentBlockDelta"].get("delta", {})
             if "text" in delta:
                 response_str += delta["text"]
-                print(delta["text"], end="", flush=True)
+                # print(delta["text"], end="", flush=True)
+                logger.debug(delta["text"])
         elif "runtimeClientError" in event:
             logger.error(f"\nError: {event['runtimeClientError']['message']}")
 
@@ -62,6 +63,7 @@ def call_agent(session_id, query) -> str:
 
 def lambda_handler(event: dict, context: LambdaContext) -> dict[str, Any]:
     """Invoke harness agent"""
+    logger.debug("Boto3 version: %s", boto3.__version__)
     logger.debug("Event: %s", json.dumps(event, default=str))
     logger.debug("Context: %s", json.dumps(context.__dict__, default=str))
 

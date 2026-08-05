@@ -2,17 +2,11 @@
 
 from pathlib import Path
 from aws_cdk import (
-    # Stack,
-    BundlingOptions,
+    Stack,
     CfnOutput,
     aws_lambda as _lambda,
     aws_iam as iam,
     Duration,
-)
-from aws_cdk.aws_lambda import (
-    AdotLambdaExecWrapper,
-    AdotLayerVersion,
-    AdotLambdaLayerPythonSdkVersion
 )
 from constructs import Construct
 
@@ -27,7 +21,7 @@ class LambdaFn(Construct):
     def __init__(self, scope: Construct, construct_id: str, harness_arn: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        # stack = Stack.of(self)
+        stack = Stack.of(self)
 
         env_vars = {
             # Application configurations [user configured]
@@ -35,9 +29,14 @@ class LambdaFn(Construct):
             "POWERTOOLS_LOG_LEVEL": "INFO",
 
             # Lambda OTEL configurations [do not modify]
+            "AWS_LAMBDA_EXEC_WRAPPER": "/opt/otel-instrument",
+            "OTEL_AWS_APPLICATION_SIGNALS_ENABLED": "false",
+            "OTEL_TRACES_SAMPLER": "always_on",
+
             "AGENT_OBSERVABILITY_ENABLED": "true",
             "AWS_GENAI_CONTENT_EXTRACTION_OPT_OUT": "true",
-            "OTEL_AWS_APPLICATION_SIGNALS_ENABLED": "false",
+            
+            # "OTEL_PYTHON_DISABLED_INSTRUMENTATIONS": "none",
             "OTEL_PROPAGATORS": "tracecontext,baggage,xray-lambda,xray",
             "OTEL_LOGS_EXPORTER": "none",
             "OTEL_METRICS_EXPORTER": "none",
@@ -59,33 +58,36 @@ class LambdaFn(Construct):
                 "harness.id,harness.endpoint.qualifier,session.id,tenant.id"
             )
 
-        tracing = _lambda.Tracing.ACTIVE
-        adot_layer = _lambda.AdotInstrumentationConfig(
-            layer_version=AdotLayerVersion.from_python_sdk_layer_version(
-                AdotLambdaLayerPythonSdkVersion.LATEST
-            ),
-            exec_wrapper=AdotLambdaExecWrapper.INSTRUMENT_HANDLER
+        # AWS Lambda service traces. Default: DISABLED (less noise), to enable change to `ACTIVE`
+        tracing = _lambda.Tracing.DISABLED
+        
+        # AWS-managed Lambda layers
+        otel_layer = _lambda.LayerVersion.from_layer_version_arn(
+            self, "AWSOpenTelemetryDistroPython",
+            # For region specific ARN https://aws-otel.github.io/docs/getting-started/lambda
+            f"arn:aws:lambda:{stack.region}:615299751070:layer:AWSOpenTelemetryDistroPython:29"
+        )
+        powertools_layer = _lambda.LayerVersion.from_layer_version_arn(
+            self, "AWSLambdaPowertoolsPythonV3",
+            f"arn:aws:lambda:{stack.region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python313-arm64:33"
         )
 
         self.lambda_fn = _lambda.Function(
             self, 'invoke_harness',
             runtime=_lambda.Runtime.PYTHON_3_13,
-            code=_lambda.Code.from_asset(
-                _TOOLS_DIR,
-                bundling=BundlingOptions(
-                    image=_lambda.Runtime.PYTHON_3_13.bundling_image,
-                    command=[
-                        "bash", "-c",
-                        "pip install -r requirements.txt -t /asset-output && cp -au . /asset-output"
-                    ],
-                ),
-            ),
+            architecture=_lambda.Architecture.ARM_64,
+            code=_lambda.Code.from_asset(_TOOLS_DIR),
             handler='handler.lambda_handler',
             timeout=Duration.minutes(5),
             memory_size=128,
+            environment=env_vars,
             tracing=tracing,
-            adot_instrumentation=adot_layer,
-            environment=env_vars
+            layers=[otel_layer, powertools_layer],
+        )
+        self.lambda_fn.role.add_managed_policy(
+            iam.ManagedPolicy.from_aws_managed_policy_name(
+                "CloudWatchLambdaApplicationSignalsExecutionRolePolicy"
+            )
         )
         self.lambda_fn.add_to_role_policy(
             iam.PolicyStatement(
