@@ -62,6 +62,7 @@ def call_agent(session_id, query) -> str:
 
 def lambda_handler(event: dict, context: LambdaContext) -> dict[str, Any]:
     """Invoke harness agent"""
+    logger.info("Boto3 version:", boto3.__version__)
     logger.debug("Event: %s", json.dumps(event, default=str))
     logger.debug("Context: %s", json.dumps(context.__dict__, default=str))
 
