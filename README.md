@@ -99,11 +99,15 @@ OTel instrumentation does not copy baggage to span attributes by default (securi
 
 ### ADOT Lambda layer for auto-instrumentation
 
-Use the AWS Distro for OpenTelemetry (ADOT) Lambda layer with the `INSTRUMENT_HANDLER` exec wrapper. It configures the `TracerProvider`, X-Ray ID generator, propagators, and OTLP exporter automatically. Custom spans created via `trace.get_tracer()` at invocation time integrate seamlessly.
+Use the new AWS Distro for OpenTelemetry (ADOT) Lambda layer. It configures the `TracerProvider`, X-Ray ID generator, propagators, and OTLP exporter automatically. Custom spans created via `trace.get_tracer()` at invocation time integrate seamlessly. Refer [ADOT Lambda Layer ARNs](https://aws-otel.github.io/docs/getting-started/lambda#adot-lambda-layer-arns) for list of region specific managed Lambda layer ARNs. See documentation for more information on enabling [AWS Distro for OpenTelemetry for Lambda](https://aws-otel.github.io/docs/getting-started/lambda).
 
-In addition to the ADOT Lambda layer, bundle the latest ADOT [≥v0.18.0] alongside the Lambda handler and set the following environment variables to activate the latest OTel instrumentation improvements:
+In addition set the following environment variables to activate the latest OTel instrumentation improvements and capture traces:
 
 ```
+AWS_LAMBDA_EXEC_WRAPPER=/opt/otel-instrument
+OTEL_AWS_APPLICATION_SIGNALS_ENABLED=false
+OTEL_TRACES_SAMPLER=always_on
+
 AGENT_OBSERVABILITY_ENABLED=true
 AWS_GENAI_CONTENT_EXTRACTION_OPT_OUT=true
 OTEL_AWS_APPLICATION_SIGNALS_ENABLED=false
@@ -200,12 +204,21 @@ cp cdk/.env.cdk.sample cdk/.env
 
 ```bash
 cd cdk
-uv run --env-file .env cdk deploy --yes
+uv run --env-file .env cdk deploy
 ```
 
 4. Invoke the agent:
 
 Navigate to the `invoke_harness` Lambda function in the AWS Console and use the **Test** button to trigger an invocation. Traces appear in CloudWatch X-Ray within a few seconds.
+
+5. Clean-up:
+
+When finished clean-up resources by destroying the stack to avoid any additional cost.
+
+```bash
+cd cdk
+uv run --env-file .env cdk destroy
+```
 
 ## Security
 

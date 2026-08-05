@@ -53,7 +53,8 @@ def call_agent(session_id, query) -> str:
             delta = event["contentBlockDelta"].get("delta", {})
             if "text" in delta:
                 response_str += delta["text"]
-                print(delta["text"], end="", flush=True)
+                # print(delta["text"], end="", flush=True)
+                logger.debug(delta["text"])
         elif "runtimeClientError" in event:
             logger.error(f"\nError: {event['runtimeClientError']['message']}")
 
