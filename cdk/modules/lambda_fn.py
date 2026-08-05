@@ -3,16 +3,10 @@
 from pathlib import Path
 from aws_cdk import (
     Stack,
-    BundlingOptions,
     CfnOutput,
     aws_lambda as _lambda,
     aws_iam as iam,
     Duration,
-)
-from aws_cdk.aws_lambda import (
-    AdotLambdaExecWrapper,
-    AdotLayerVersion,
-    AdotLambdaLayerPythonSdkVersion
 )
 from constructs import Construct
 
@@ -64,8 +58,9 @@ class LambdaFn(Construct):
                 "harness.id,harness.endpoint.qualifier,session.id,tenant.id"
             )
 
-        tracing = _lambda.Tracing.ACTIVE
-        # tracing = _lambda.Tracing.DISABLED
+        # AWS Lambda service traces. Default: DISABLED (less noise), to enable change to `ACTIVE`
+        tracing = _lambda.Tracing.DISABLED
+        
         # AWS-managed Lambda layers
         otel_layer = _lambda.LayerVersion.from_layer_version_arn(
             self, "AWSOpenTelemetryDistroPython",
@@ -76,26 +71,12 @@ class LambdaFn(Construct):
             self, "AWSLambdaPowertoolsPythonV3",
             f"arn:aws:lambda:{stack.region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python313-arm64:33"
         )
-        # adot_layer = _lambda.AdotInstrumentationConfig(
-        #     layer_version=AdotLayerVersion.from_python_sdk_layer_version(
-        #         AdotLambdaLayerPythonSdkVersion.LATEST
-        #     ),
-        #     exec_wrapper=AdotLambdaExecWrapper.INSTRUMENT_HANDLER
-        # )
 
         self.lambda_fn = _lambda.Function(
             self, 'invoke_harness',
             runtime=_lambda.Runtime.PYTHON_3_13,
-            code=_lambda.Code.from_asset(
-                _TOOLS_DIR,
-                bundling=BundlingOptions(
-                    image=_lambda.Runtime.PYTHON_3_13.bundling_image,
-                    command=[
-                        "bash", "-c",
-                        "pip install -r requirements.txt -t /asset-output && cp -au . /asset-output"
-                    ],
-                ),
-            ),
+            architecture=_lambda.Architecture.ARM_64,
+            code=_lambda.Code.from_asset(_TOOLS_DIR),
             handler='handler.lambda_handler',
             timeout=Duration.minutes(5),
             memory_size=128,
