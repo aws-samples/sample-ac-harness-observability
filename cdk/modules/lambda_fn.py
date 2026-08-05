@@ -36,9 +36,13 @@ class LambdaFn(Construct):
 
             # Lambda OTEL configurations [do not modify]
             "AWS_LAMBDA_EXEC_WRAPPER": "/opt/otel-instrument",
+            "OTEL_AWS_APPLICATION_SIGNALS_ENABLED": "false",
+            "OTEL_TRACES_SAMPLER": "always_on",
+
             "AGENT_OBSERVABILITY_ENABLED": "true",
             "AWS_GENAI_CONTENT_EXTRACTION_OPT_OUT": "true",
-            "OTEL_AWS_APPLICATION_SIGNALS_ENABLED": "false",
+            
+            # "OTEL_PYTHON_DISABLED_INSTRUMENTATIONS": "none",
             "OTEL_PROPAGATORS": "tracecontext,baggage,xray-lambda,xray",
             "OTEL_LOGS_EXPORTER": "none",
             "OTEL_METRICS_EXPORTER": "none",
@@ -60,12 +64,13 @@ class LambdaFn(Construct):
                 "harness.id,harness.endpoint.qualifier,session.id,tenant.id"
             )
 
-        # tracing = _lambda.Tracing.ACTIVE
-        tracing = _lambda.Tracing.DISABLED
+        tracing = _lambda.Tracing.ACTIVE
+        # tracing = _lambda.Tracing.DISABLED
         # AWS-managed Lambda layers
         otel_layer = _lambda.LayerVersion.from_layer_version_arn(
             self, "AWSOpenTelemetryDistroPython",
-            f"arn:aws:lambda:{stack.region}:901920570463:layer:AWSOpenTelemetryDistroPython:29"
+            # For region specific ARN https://aws-otel.github.io/docs/getting-started/lambda
+            f"arn:aws:lambda:{stack.region}:615299751070:layer:AWSOpenTelemetryDistroPython:29"
         )
         powertools_layer = _lambda.LayerVersion.from_layer_version_arn(
             self, "AWSLambdaPowertoolsPythonV3",
